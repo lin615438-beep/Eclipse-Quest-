@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>萬聖節冒險RPG</title>
+<style>
+  body {
+  font-family: "微軟正黑體", sans-serif;
+  background-color: #1e1e2f;
+  color: #f5e6c4;
+  
+  display: flex;           /* 使用 flex 置中 */
+  flex-direction: column;  /* 上下排列 */
+  justify-content: center;  /* 垂直置中 */
+  align-items: center;      /* 水平置中 */
+  min-height: 100vh;        /* 讓 body 撐滿整個視窗高度 */
+  margin: 0;
+  padding: 20px;
+}
+
+  #story {
+    min-height: 150px;
+    padding: 15px;
+    background-color: #2a2a3d;
+    border-radius: 10px;
+    margin-bottom: 20px;
+  }
+  .choice-btn, #statusBtn, #npcBtn {
+    display: inline-block;
+    margin: 5px;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    background-color: #ff8c42;
+    color: #1e1e2f;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.2s;
+  }
+  .choice-btn:hover, #statusBtn:hover, #npcBtn:hover {
+    background-color: #ffa64d;
+  }
+  #buttons {
+    margin-bottom: 20px;
+  }
+</style>
+</head>
+<body>
+<h1>萬聖節冒險</h1>
+<div id="story">故事載入中...</div>
+
+<div id="buttons">
+  <button id="choice1" class="choice-btn"></button>
+  <button id="choice2" class="choice-btn"></button>
+  <button id="choice3" class="choice-btn"></button>
+</div>
+
+<button id="statusBtn">角色資訊</button>
+<button id="npcBtn">NPC資訊</button>
+
+<!-- 獎勵彈窗 -->
+<div id="rewardPopup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+    background: rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000;">
+  <div id="rewardBox" style="background:#fffae3; color:#1e1e2f; padding:20px; border-radius:15px; 
+      text-align:center; min-width:250px; max-width:300px;">
+    <img id="rewardIcon" src="" alt="" style="width:60px; height:60px; display:none; margin-bottom:10px;">
+    <pre id="rewardContent" style="white-space:pre-wrap; margin-bottom:10px;"></pre>
+    <button id="rewardCloseBtn" style="padding:8px 15px; border:none; border-radius:8px; background:#ff8c42; 
+      color:#1e1e2f; cursor:pointer; font-weight:bold;">確認</button>
+  </div>
+</div>
+
+<script>
+// 遊戲資料
+const gameData = {
+  "stage0": {
+    "story": "萬聖節的氣息瀰漫在裡世界，空氣中飄散著南瓜香料和一絲淡淡的惡魔氣息...",
+    "choices": {
+      "1": { "text": "去廚房找魯尼", "story": "魯尼手忙腳亂地準備南瓜餅乾，你幫她撿掉在地上的食材。", "reward": { "exp": 10, "items": ["南瓜餅乾"] }, "nextStage": "stage1a" },
+      "2": { "text": "和玥光族去街上討糖果", "story": "街道上人聲鼎沸，你和玥光族朋友拿到第一袋糖果。", "reward": { "exp": 10, "items": ["魔法糖果"] }, "nextStage": "stage1b" },
+      "3": { "text": "和其他哈士祈們一起休息", "story": "大家坐在篝火旁，聊聊趣事，放鬆身心。", "reward": { "strength": 2 }, "nextStage": "stage1c" }
+    }
+  },
+  "stage1a": {
+    "story": "你興奮地跑向廚房，小小的哈士祈腦袋裡充滿了對魯尼料理的期待...",
+    "choices": {
+      "1": { "text": "協助魯尼料理", "story": "你靠近魯尼，她邀請你一起施加好吃魔法，鍋子炸掉了！", "reward": { "exp": 5 }, "nextStage": "stage1a_cont" },
+      "2": { "text": "偷吃餅乾！", "story": "你偷偷吃了桌上的餅乾，被魯尼抓到了！", "reward": { "exp": 5 }, "nextStage": "stage1a_contB" },
+      "3": { "text": "去看一下烤箱", "story": "你發現魯尼將烘焙紙一起放入烤箱！", "reward": { "exp": 15, "items": ["魯尼的烤餅乾（完美）"] }, "nextStage": "stage2" }
+    }
+  },
+  "stage1a_cont": {
+    "story": "魯尼溫柔的摸摸你的頭，對你說：『魔法失敗了呢…你還好嗎？』",
+    "choices": {
+      "1": { "text": "搖尾巴", "story": "你被抱起，發現烤箱起火，你慌張跳下滅火！", "reward": { "exp": 5, "items": ["魯尼的烤餅乾（烤焦）"] }, "nextStage": "stage2" }
+    }
+  },
+  "stage1a_contB": {
+    "story": "你沒能跑掉，被魯尼抓起來帶離了廚房。",
+    "choices": {
+      "1": { "text": "繼續", "story": "", "reward": {}, "nextStage": "stage2" }
+    }
+  }
+};
+// 遊戲資料續：stage1b ~ end
+Object.assign(gameData, {
+  "stage1b": {
+    "story": "街道上人聲鼎沸，你和玥光族朋友拿到第一袋糖果。",
+    "choices": {
+      "1": { "text": "跟裝扮成巫師的小孩玩小遊戲", "story": "巫師小孩出題目，你答對了獲得小魔法道具。", "reward": { "exp": 10, "items": ["魔法糖果袋"] }, "nextStage": "stage2" },
+      "2": { "text": "參加街頭南瓜迷宮挑戰", "story": "你在迷宮中巧妙躲過陷阱，成功拿到寶箱。", "reward": { "exp": 15, "items": ["南瓜寶箱"] }, "nextStage": "stage2" },
+      "3": { "text": "回圖書館與魯尼集合", "story": "你回到圖書館，和魯尼分享戰利品。", "reward": { "exp": 5 }, "nextStage": "stage1a" }
+    }
+  },
+  "stage1c": {
+    "story": "你與哈士祈們一起休息，放鬆身心。",
+    "choices": {
+      "1": { "text": "加入廚房幫忙魯尼", "story": "你走進廚房，幫忙撿食材與攪拌南瓜餅乾。", "reward": { "exp": 10, "items": ["南瓜餅乾"] }, "nextStage": "stage1a" },
+      "2": { "text": "跟玥光族出去街上冒險", "story": "你與玥光族朋友一起踏上街上討糖果的冒險。", "reward": { "exp": 10, "items": ["魔法糖果"] }, "nextStage": "stage1b" },
+      "3": { "text": "探索圖書館秘密角落", "story": "你發現圖書館藏書裡的一本神秘書籍，上面有萬聖節小知識與符咒。", "reward": { "strength": 1, "items": ["魔法卷軸"] }, "nextStage": "stage2" }
+    }
+  },
+  "stage2": {
+    "story": "萬聖節活動正如火如荼！",
+    "choices": {
+      "1": { "text": "參加萬聖節派對", "story": "派對上歡笑不斷，大家交換糖果與故事。", "reward": { "exp": 15 }, "nextStage": "end" },
+      "2": { "text": "探索夜市神秘小攤", "story": "你在小攤中找到奇特魔法道具，力量增強。", "reward": { "strength": 2, "items": ["魔法藥水"] }, "nextStage": "end" },
+      "3": { "text": "去南瓜迷宮冒險", "story": "你深入南瓜迷宮，解開謎題獲得寶藏。", "reward": { "exp": 20, "items": ["萬聖糖果"] }, "nextStage": "end" }
+    }
+  },
+  "end": {
+    "story": "今天的萬聖節冒險結束了！看看你收集了哪些道具吧～",
+    "choices": { "1": { "text": "再次冒險", "nextStage": "stage0" } }
+  }
+});
+
+// 玩家資料
+let player = { exp: 0, strength: 5, items: [] };
+let currentStage = "stage0";
+
+// 顯示劇情與選項
+function showStory(stageKey) {
+  const stage = gameData[stageKey];
+  document.getElementById("story").innerText = stage.story || "";
+  
+  // 更新按鈕文字
+  const btns = [document.getElementById("choice1"), document.getElementById("choice2"), document.getElementById("choice3")];
+  btns.forEach((btn, idx) => {
+    const choice = stage.choices[String(idx+1)];
+    if (choice) {
+      btn.style.display = "inline-block";
+      btn.innerText = choice.text;
+      btn.onclick = () => selectChoice(String(idx+1));
+    } else {
+      btn.style.display = "none";
+    }
+  });
+}
+
+// 獎勵彈窗邏輯
+const rewardPopup = document.getElementById("rewardPopup");
+const rewardContent = document.getElementById("rewardContent");
+const rewardCloseBtn = document.getElementById("rewardCloseBtn");
+
+function showReward(reward) {
+  let text = "";
+  if (reward.exp) text += `EXP +${reward.exp}\n`;
+  if (reward.strength) text += `Strength +${reward.strength}\n`;
+  if (reward.items && reward.items.length > 0) text += `Items: ${reward.items.join(", ")}`;
+  
+  rewardContent.innerText = text;
+  rewardPopup.style.display = "flex";
+}
+
+// 玩家選擇
+function selectChoice(choiceKey) {
+  const stage = gameData[currentStage];
+  const choice = stage.choices[choiceKey];
+  
+  // 顯示故事
+  document.getElementById("story").innerText = choice.story || "";
+  
+  // 更新玩家資料 & 顯示獎勵彈窗
+  if (choice.reward) {
+    if (choice.reward.exp) player.exp += choice.reward.exp;
+    if (choice.reward.strength) player.strength += choice.reward.strength;
+    if (choice.reward.items) player.items.push(...choice.reward.items);
+
+    if (choice.reward.exp || choice.reward.strength || choice.reward.items)
+      setTimeout(() => showReward(choice.reward), 100);
+  }
+
+  // 更新階段
+  currentStage = choice.nextStage;
+
+  // 延遲顯示下一階段選項
+  setTimeout(() => showStory(currentStage), 200);
+}
+
+// 彈窗確認按鈕
+rewardCloseBtn.onclick = () => {
+  rewardPopup.style.display = "none";
+};
+
+// 玩家資訊
+function showPlayerInfo() {
+  const info = `EXP: ${player.exp}\nStrength: ${player.strength}\nItems: ${player.items.length > 0 ? player.items.join(", ") : "無"}`;
+  alert(info);
+}
+
+// NPC資訊
+function showNPCInfo() {
+  const info = "魯尼天使（柯基）\n性格：調皮可愛\n喜歡：烘焙與裝飾\n\n玥Itsuki（惡魔下屬）\n性格：溫順、愛惡作劇";
+  alert(info);
+}
+
+// 綁定按鈕
+document.getElementById("statusBtn").onclick = showPlayerInfo;
+document.getElementById("npcBtn").onclick = showNPCInfo;
+
+// 初始化遊戲
+showStory(currentStage);
+</script>
+</body>
+</html>
